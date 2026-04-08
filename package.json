@@ -1,0 +1,28 @@
+{
+  "name": "create-appforge",
+  "version": "1.0.0",
+  "description": "AppForge Setup Wizard — AI design agency pipeline installer",
+  "type": "module",
+  "bin": {
+    "create-appforge": "./index.js"
+  },
+  "keywords": [
+    "appforge", "ai", "design", "figma", "claude", "claude-code",
+    "multi-agent", "design-pipeline", "setup", "wizard"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "index.js",
+    "wizard.jsx",
+    "README.md"
+  ],
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/create-appforge"
+  },
+  "author": "",
+  "license": "MIT"
+}
