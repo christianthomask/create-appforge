@@ -1,10 +1,10 @@
 {
   "name": "create-appforge",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "AppForge Setup Wizard — AI design agency pipeline installer",
   "type": "module",
   "bin": {
-    "create-appforge": "./index.js"
+    "create-appforge": "index.js"
   },
   "keywords": [
     "appforge",
@@ -29,7 +29,7 @@
   "dependencies": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/christianthomask/create-appforge.git"
+    "url": "git+https://github.com/your-username/create-appforge.git"
   },
   "author": "",
   "license": "MIT"

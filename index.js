@@ -108,12 +108,6 @@ function generateFiles(config) {
     config.projectName ? `APPFORGE_PROJECT_NAME=${config.projectName}` : "",
   ].filter(Boolean).join("\n"));
 
-  add(".env.template", [
-    "ANTHROPIC_API_KEY=", "FIGMA_TOKEN=", "FIGMA_FILE_URL=",
-    "OLLAMA_BASE_URL=https://api.ollama.com/v1", "OLLAMA_API_KEY=",
-    "OLLAMA_MODEL=qwen3.5:cloud", "APPFORGE_VARIANT_COUNT=3",
-    "APPFORGE_COST_THRESHOLD_USD=2.00", "APPFORGE_PROJECT_NAME=",
-  ].join("\n"));
 
   add(".gitignore", ["node_modules/",".env","*.key",
     "output/runs/","output/designs/","output/debates/",
@@ -407,17 +401,7 @@ console.log('  Weaknesses found:', result.agencyCritique?.weaknesses?.length || 
     }, null, 2));
   }
 
-  // ── Setup report placeholder ──────────────────────────────────
-  add("setup/readiness-report.json", JSON.stringify({
-    status: "installed",
-    installedAt: new Date().toISOString(),
-    config: {
-      installPath: config.installPath,
-      variantCount: config.variantCount,
-      agencyEnabled: config.agencyEnabled,
-      os: config.os,
-    }
-  }, null, 2));
+
 
   return { files, installPath };
 }
@@ -448,7 +432,10 @@ function buildHTML() {
   <div id="root"></div>
   <script>window.__APPFORGE_API__ = true;</script>
   <script type="text/babel" data-presets="react">
-${wizardCode.replace(/^import.*from.*$/gm, "// (import removed for browser)")}
+${wizardCode
+    .replace(/^import\s.*$/gm, "")
+    .replace(/^export\s+default\s+/gm, "")
+    .replace(/^export\s+/gm, "")}
 
 // Replace React imports for browser UMD
 const { useState, useEffect, useRef, useCallback } = React;

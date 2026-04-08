@@ -213,7 +213,7 @@ function Prereqs({detected,isChecking,onRecheck,agencyEnabled,os}){
   const core=[
     {key:"node",   label:"Node.js 18+",  fix:"nodejs.org → LTS"},
     {key:"git",    label:"Git",          fix:os==="windows"?"git-scm.com (required for Code tab)":"git-scm.com"},
-    {key:"claude", label:"Claude Code",  fix:"npm install -g @anthropic-ai/claude-code"},
+    {key:"claude", label:"Claude Code",  fix:os==="windows"?"winget install Anthropic.ClaudeCode  (or: curl -fsSL https://claude.ai/install.sh | sh  in Git Bash/WSL)":"curl -fsSL https://claude.ai/install.sh | sh"},
     ...(os==="windows"?[{key:"wsl",label:"WSL2 (optional on Windows)",fix:"Windows Features → Windows Subsystem for Linux"}]:[]),
   ];
   const desktop=[
@@ -221,7 +221,7 @@ function Prereqs({detected,isChecking,onRecheck,agencyEnabled,os}){
   ];
   const agency=[
     {key:"ollama",   label:"Ollama",   fix:"ollama.com"},
-    {key:"opencode", label:"OpenCode", fix:"npm install -g opencode"},
+    {key:"opencode", label:"OpenCode", fix:"npm i -g opencode-ai"},
   ];
   const allCoreOk=!isChecking&&detected&&core.filter(i=>i.key!=="wsl").every(i=>detected[i.key]?.found);
 
@@ -619,7 +619,7 @@ function AgencySetup({data,onChange,detected}){
       <p style={{fontSize:14,color:T.mid,...serif,lineHeight:1.75,marginBottom:18}}>Qwen3.5 reviews your winning design with independent eyes. Runs via Ollama cloud — no local GPU needed.</p>
       <Card>
         <div style={{fontSize:10,color:T.light,...mono,letterSpacing:"0.12em",marginBottom:10}}>TOOL STATUS</div>
-        {[{key:"ollama",label:"Ollama CLI",inst:"ollama.com (optional — cloud mode doesn't need it)"},{key:"opencode",label:"OpenCode",inst:"npm install -g opencode"}].map(item=>{
+        {[{key:"ollama",label:"Ollama CLI",inst:"ollama.com (optional — cloud mode doesn't need it)"},{key:"opencode",label:"OpenCode",inst:"npm i -g opencode-ai"}].map(item=>{
           const d=detected?.[item.key];
           return(
             <div key={item.key} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:`1px solid ${T.rule}`}}>
@@ -631,7 +631,39 @@ function AgencySetup({data,onChange,detected}){
             </div>
           );
         })}
-      </Card>
+      {(!detected?.ollama?.found||!detected?.opencode?.found)&&(
+        <div style={{background:T.surfaceAlt,border:`1px solid ${T.border}`,borderRadius:8,padding:"12px 14px",marginTop:-4,marginBottom:4}}>
+          <div style={{fontSize:10,color:T.light,...mono,letterSpacing:"0.1em",marginBottom:8}}>INSTALL MISSING TOOLS</div>
+          {!detected?.opencode?.found&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:600,color:T.dark,...mono,marginBottom:4}}>OpenCode</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <div style={{fontSize:11,color:T.mid,...serif,marginBottom:2}}>Choose your platform:</div>
+                {[
+                  {label:"npm (all platforms)",     cmd:"npm i -g opencode-ai"},
+                  {label:"Windows — Scoop",          cmd:"scoop install opencode"},
+                  {label:"Windows — Chocolatey",     cmd:"choco install opencode"},
+                  {label:"macOS/Linux — Homebrew",   cmd:"brew install anomalyco/tap/opencode"},
+                  {label:"curl (macOS/Linux)",       cmd:"curl -fsSL https://opencode.ai/install | bash"},
+                ].map(({label,cmd})=>(
+                  <div key={cmd} style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:10,color:T.light,width:160,flexShrink:0,...serif}}>{label}</span>
+                    <code style={{fontSize:11,...mono,background:"#0D0D0D",color:"#7CFC7C",padding:"3px 8px",borderRadius:4}}>{cmd}</code>
+                  </div>
+                ))}
+                <div style={{fontSize:11,color:T.mid,marginTop:4,...serif}}>Verify: <code style={{...mono,fontSize:11,background:T.rule,padding:"1px 6px",borderRadius:3}}>opencode --version</code></div>
+              </div>
+            </div>
+          )}
+          {!detected?.ollama?.found&&(
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:T.dark,...mono,marginBottom:4}}>Ollama CLI (optional — cloud API key is enough)</div>
+              <code style={{fontSize:11,...mono,background:"#0D0D0D",color:"#7CFC7C",padding:"3px 8px",borderRadius:4,display:"block",marginBottom:4}}>curl -fsSL https://ollama.ai/install.sh | sh</code>
+              <div style={{fontSize:11,color:T.mid,...serif}}>Or download from <strong>ollama.com</strong> · Verify: <code style={{...mono,fontSize:11,background:T.rule,padding:"1px 6px",borderRadius:3}}>ollama --version</code></div>
+            </div>
+          )}
+        </div>
+      )}
       <Card>
         <Field label="Ollama Cloud API Key" hint="ollama.com → API Keys" detected={detected?.existingEnv?.OLLAMA_API_KEY?"found in .env":null}>
           <div style={{display:"flex",gap:8}}>
@@ -944,9 +976,23 @@ export default function AppForgeWizard(){
   const activeSteps=ALL_STEPS.filter(s=>s.id!=="agency"||data.agencyEnabled);
   const cur=activeSteps[stepIdx];
 
-  const runScan=useCallback(()=>{
+  const runScan=useCallback(async()=>{
     setIsChecking(true);
-    setTimeout(()=>{
+    try{
+      const res=await fetch('/api/check-prereqs');
+      if(!res.ok)throw new Error('unavailable');
+      const d=await res.json();
+      setData(p=>({...p,
+        os:d.platform==="win32"?"windows":d.platform==="darwin"?"macos":"linux",
+        windowsUsername:d.username||p.windowsUsername,
+        anthropicKey:d.existingEnv?.ANTHROPIC_API_KEY||p.anthropicKey,
+        figmaToken:d.existingEnv?.FIGMA_TOKEN||p.figmaToken,
+        figmaFileUrl:d.existingEnv?.FIGMA_FILE_URL||p.figmaFileUrl,
+        ollamaApiKey:d.existingEnv?.OLLAMA_API_KEY||p.ollamaApiKey,
+      }));
+      setDetected(d);
+    }catch{
+      // Fallback to mock for artifact/demo mode
       const d={...MOCK};
       setData(p=>({...p,
         anthropicKey:d.existingEnv.ANTHROPIC_API_KEY||p.anthropicKey,
@@ -955,31 +1001,58 @@ export default function AppForgeWizard(){
         ollamaApiKey:d.existingEnv.OLLAMA_API_KEY||p.ollamaApiKey,
       }));
       setDetected(d);
-      setIsChecking(false);
-    },2200);
+    }
+    setIsChecking(false);
   },[]);
 
   useEffect(()=>{if(stepIdx===1)runScan();},[stepIdx]);
 
-  const runInstall=useCallback(()=>{
+  const runInstall=useCallback(async()=>{
     if(installing)return;
     setInstalling(true);
     setInstallProgress(0);
-    const allFiles=Object.entries(MANIFEST).filter(([k])=>k!=="Agency"||data.agencyEnabled).flatMap(([c,fs])=>fs.map(f=>({c,f})));
-    setInstallLog(["→ Starting AppForge installation...",`→ Target: ${data.installPath}`,`→ OS: ${data.os} · Interface: ${data.windowsInterface||"default"}`,`→ ${allFiles.length} files · agency ${data.agencyEnabled?"enabled":"disabled"}`]);
-    let i=0;
-    iRef.current=setInterval(()=>{
-      if(i>=allFiles.length){
-        clearInterval(iRef.current);
-        setInstallLog(p=>[...p,"→ npm install openai dotenv...","→ Validating configuration...","✓ AppForge installed!"]);
-        setTimeout(()=>setStepIdx(s=>s+1),1400);
-        return;
+    setInstallLog(["→ Starting AppForge installation...",`→ Target: ${data.installPath}`,`→ OS: ${data.os} · agency ${data.agencyEnabled?"enabled":"disabled"}`]);
+    try{
+      const res=await fetch('/api/install',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(data),
+      });
+      if(!res.ok)throw new Error(`Server error ${res.status}`);
+      const reader=res.body.getReader();
+      const decoder=new TextDecoder();
+      let buf='';
+      let fileCount=0;
+      while(true){
+        const{done,value}=await reader.read();
+        if(done)break;
+        buf+=decoder.decode(value,{stream:true});
+        const lines=buf.split('\n');
+        buf=lines.pop(); // keep incomplete line
+        for(const line of lines){
+          if(!line.trim())continue;
+          try{
+            const ev=JSON.parse(line);
+            if(ev.type==='start'){
+              setInstallLog(p=>[...p,`→ Writing ${ev.total} files...`]);
+            }else if(ev.type==='file'){
+              fileCount++;
+              setInstallProgress(fileCount);
+              setInstallLog(p=>[...p.slice(-22),`✓ ${ev.path}`]);
+            }else if(ev.type==='log'){
+              setInstallLog(p=>[...p,ev.msg]);
+            }else if(ev.type==='complete'){
+              setInstallLog(p=>[...p,'✓ AppForge installed successfully!']);
+              setTimeout(()=>setStepIdx(s=>s+1),1400);
+            }else if(ev.type==='error'){
+              setInstallLog(p=>[...p,`✗ ${ev.message}`]);
+            }
+          }catch{}
+        }
       }
-      const{c,f}=allFiles[i];
-      setInstallProgress(i+1);
-      setInstallLog(p=>[...p.slice(-22),`✓ [${c}] ${f}`]);
-      i++;
-    },70);
+    }catch(e){
+      setInstallLog(p=>[...p,`✗ Installation failed: ${e.message}`,`→ Make sure the create-appforge server is running on localhost:4242`]);
+    }
   },[data,installing]);
 
   useEffect(()=>()=>{if(iRef.current)clearInterval(iRef.current);},[]);
