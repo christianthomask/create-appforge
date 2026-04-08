@@ -7,8 +7,16 @@
     "create-appforge": "./index.js"
   },
   "keywords": [
-    "appforge", "ai", "design", "figma", "claude", "claude-code",
-    "multi-agent", "design-pipeline", "setup", "wizard"
+    "appforge",
+    "ai",
+    "design",
+    "figma",
+    "claude",
+    "claude-code",
+    "multi-agent",
+    "design-pipeline",
+    "setup",
+    "wizard"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -21,7 +29,7 @@
   "dependencies": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/christianthomask/create-appforge"
+    "url": "git+https://github.com/christianthomask/create-appforge.git"
   },
   "author": "",
   "license": "MIT"
